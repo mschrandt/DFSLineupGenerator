@@ -282,6 +282,8 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
     setLoading(false); 
   })
   queue.push(excludeLists)
+  await queue.drain()
+  console.log("Queue drained!");
 }
 
 function combinations(lineup) {
