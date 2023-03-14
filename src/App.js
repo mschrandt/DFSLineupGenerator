@@ -275,7 +275,7 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
       })
   }, RATE_LIMIT);
 
-  queue.drain(() => {
+  queue.drain(function() {
     var uniqueSolutions = unique(solutions)
     uniqueSolutions.sort((a,b)=>b.score-a.score)
     setLpRes(uniqueSolutions.slice(0,numLineups));
