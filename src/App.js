@@ -249,7 +249,7 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
     })
     .slice(0, numLineups*2)
   
-  var queue = async.queue(async (excludeList) => {
+  var queue = async.queue(async (excludeList, callback) => {
     filteredPlayers = playerData.filter(playerFilter(removedPlayers.concat(excludeList)));
     expandedPalyers = expandPlayerByPos(filteredPlayers);
     await solve(glpk,
@@ -273,17 +273,17 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
             })
         }
       })
+    callback();
   }, RATE_LIMIT);
 
   queue.drain(function() {
-    var uniqueSolutions = unique(solutions)
-    uniqueSolutions.sort((a,b)=>b.score-a.score)
+    console.log("Queue drained!");
+    var uniqueSolutions = unique(solutions);
+    uniqueSolutions.sort((a,b)=>b.score-a.score);
     setLpRes(uniqueSolutions.slice(0,numLineups));
     setLoading(false); 
   })
-  queue.push(excludeLists)
-  await queue.drain()
-  console.log("Queue drained!");
+  queue.push(excludeLists);
 }
 
 function combinations(lineup) {
