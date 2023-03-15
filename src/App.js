@@ -3,12 +3,14 @@ import React, { useState } from 'react';
 import Papa from "papaparse";
 import GLPK from 'glpk.js';
 import { Circles} from 'react-loader-spinner';
+const seedrandom = require('seedrandom');
+seedrandom('hello.', {global: true});
 const async = require("async");
 const RATE_LIMIT = 20;
 const FPPG_COL = 5;
 const PROXY_URL = "https://corsproxy.io/?";
 const ROTOWIRE_URL = "https://www.rotowire.com/daily/tables/optimizer-nba.php?siteID=2&slateID=13281&projSource=RotoWire";
-var rotowireData = {};
+const rotowireData = {};
 const positionOrder = {
   "PG" : 1,
   "SG" : 2,
@@ -229,7 +231,7 @@ function solve(glpk,
   return glpk.solve(equation, options);
 }
 
-async function generateSolutions(numLineups, lockedPlayers, removedPlayers, playerData, playerArray, setLpRes, setLoading) {
+async function generateSolutions(numLineups, lockedPlayers, removedPlayers, playerData, playerArray, setLpRes, setLoading, minUniqueness) {
   const glpk = await GLPK();
   const solutions = []
   var filteredPlayers = playerData.filter(playerFilter(removedPlayers));
@@ -262,15 +264,14 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
   }
 
   //generate combinations
-  const excludeLists = combinations(bestLineup)
+  const excludeLists = shuffleArray(combinations(bestLineup, minUniqueness)
     .filter((excludeList) => {
       for(var lockedPlayer of lockedPlayers){
         if(excludeList.includes(lockedPlayer)) return false;
       }
       return true;
-    })
+    }))
     .slice(0, numLineups*2)
-  
   var queue = async.queue(async (excludeList, callback) => {
     filteredPlayers = playerData.filter(playerFilter(removedPlayers.concat(excludeList)));
     expandedPalyers = expandPlayerByPos(filteredPlayers);
@@ -299,7 +300,6 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
   }, RATE_LIMIT);
 
   queue.drain(function() {
-    console.debug("Queue drained");
     var uniqueSolutions = unique(solutions).slice(0,numLineups);
     uniqueSolutions.sort((a,b)=>b.score-a.score);
     setLpRes(uniqueSolutions);
@@ -308,19 +308,35 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
   queue.push(excludeLists);
 }
 
-function combinations(lineup) {
-  return lineup.map(v => [v])
-    .concat(
+function combinations(lineup, minUniqueness = 1) {
+  var combinationList = [];
+  
+  if(minUniqueness <= 1)
+  {
+    combinationList = combinationList.concat(lineup.map(v => [v]))
+  }
+
+  if(minUniqueness <= 2)
+  {
+    combinationList = combinationList.concat(
       lineup.flatMap(
         (v, i) => lineup.slice(i + 1).map(w => [v, w])
       ))
-    .concat(
+  }
+
+  if(minUniqueness <= 3)
+  {
+    combinationList = combinationList.concat(
       lineup.flatMap(
         (v, i) => lineup.slice(i + 1).flatMap((w, j) =>
           lineup.slice(i + j + 2).map(x => [v, w, x]))
       )
     )
-    .concat(
+  }
+
+  if(minUniqueness <= 4)
+  {
+    combinationList = combinationList.concat(
       lineup.flatMap(
         (v, i) => lineup.slice(i + 1).flatMap((w, j) =>
           lineup.slice(i + j + 2).flatMap((x, k) =>
@@ -328,15 +344,31 @@ function combinations(lineup) {
         )
       )
     )
-    .concat(
+  }
+    
+  if(minUniqueness <= 5)
+  {    
+    combinationList = combinationList.concat(
       lineup.flatMap(
         (v, i) => lineup.slice(i + 1).flatMap((w, j) =>
           lineup.slice(i + j + 2).flatMap((x, k) =>
             lineup.slice(i + j + k + 3).flatMap((y, l) => 
-             lineup.slice(i+j+k+l+4).map(z => [v, w, x, y, z])))
+            lineup.slice(i+j+k+l+4).map(z => [v, w, x, y, z])))
         )
       )
     )
+  }
+
+  return combinationList;
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+  }
+
+  return array;
 }
 
 function formatSolution(lineup) {
@@ -392,6 +424,8 @@ function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values
           if(rotowireData[playerId]){
             element.FPPG = rotowireData[playerId].proj_points;
           }else if(element['Injury Indicator'] === 'O'){
+            element.FPPG = 0;
+          }else {
             element.FPPG = 0;
           }
         });
@@ -506,10 +540,11 @@ function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, set
 
   const [numLineups, setNumLineups] = useState(10);
   const [loading, setLoading] = useState(false);
+  const [minUniqueness, setMinUniqueness] = useState(1);
   const generateLineupsButtonEvent = () => {
     setLpRes([])
     setLoading(true)
-    generateSolutions(numLineups, lockedPlayers, removedPlayers, parsedData, values, setLpRes, setLoading);
+    generateSolutions(numLineups, lockedPlayers, removedPlayers, parsedData, values, setLpRes, setLoading, minUniqueness);
   }
 
   const header = ["Row", "PG", "PG", "SG", "SG","SF", "SF","PF", "PF", "C", "Salary","Score"]
@@ -524,6 +559,15 @@ function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, set
       max="250"
       defaultValue={numLineups}
       onChange={(event) => setNumLineups(event.target.value)} />
+    <br />
+    <label>Minimum unique players per lineup: {minUniqueness}</label>
+    <input type="range" 
+      min="1" 
+      max="5" 
+      value={minUniqueness} 
+      onChange={(event) => setMinUniqueness(event.target.value)}
+      />
+    
     <br />
     <button type="button" onClick={generateLineupsButtonEvent} disabled={loading}>Generate Lineups</button>
     <button type="button" onClick={()=>exportData(lpRes)} hidden={lpRes.length<=0}>Export Lineups</button>
