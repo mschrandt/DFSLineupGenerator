@@ -391,6 +391,8 @@ function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values
           var playerId = element.Id.split("-")[1];
           if(rotowireData[playerId]){
             element.FPPG = rotowireData[playerId].proj_points;
+          }else if(element['Injury Indicator'] === 'O'){
+            element.FPPG = 0;
           }
         });
 
