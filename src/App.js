@@ -5,6 +5,7 @@ import GLPK from 'glpk.js';
 import { Circles} from 'react-loader-spinner';
 const async = require("async");
 const RATE_LIMIT = 20;
+const FPPG_COL = 5;
 
 function playerFilter(excludeList = []) {
   return (player) => player.FPPG !== '' 
@@ -277,10 +278,10 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
   }, RATE_LIMIT);
 
   queue.drain(function() {
-    console.log("Queue drained!");
-    var uniqueSolutions = unique(solutions);
+    console.debug("Queue drained");
+    var uniqueSolutions = unique(solutions).slice(0,numLineups);
     uniqueSolutions.sort((a,b)=>b.score-a.score);
-    setLpRes(uniqueSolutions.slice(0,numLineups));
+    setLpRes(uniqueSolutions);
     setLoading(false); 
   })
   queue.push(excludeLists);
@@ -354,7 +355,7 @@ function exportData(solutions){
   link.click();
 }
 
-function PlayerList({ setParsedData, tableRows, setTableRows, values, setValues, lockedPlayers, setLockedPlayers, removedPlayers, setRemovedPlayers }) {
+function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values, setValues, lockedPlayers, setLockedPlayers, removedPlayers, setRemovedPlayers }) {
 
   const changeHandler = (event) => {
     // Passing file data (event.target.files[0]) to parse using Papa.parse
@@ -411,6 +412,17 @@ function PlayerList({ setParsedData, tableRows, setTableRows, values, setValues,
     setRemovedPlayers(removedPlayers);
   }
 
+  const changeFppg = (event, playerId) => {
+    const indexToUpdate = values.findIndex((player) => player[0]===playerId);
+    if(event.target.value >= event.target.min &&
+        event.target.value <= event.target.max){
+          values[indexToUpdate][FPPG_COL] = event.target.value;
+          setValues(values);
+          parsedData[indexToUpdate].FPPG = event.target.value;
+          setParsedData(parsedData);
+        }
+  }
+
   return (
     <div className='playerList'>
       <h2>Upload Fanduel Player List (.csv)</h2>
@@ -427,9 +439,10 @@ function PlayerList({ setParsedData, tableRows, setTableRows, values, setValues,
       <table>
         <thead>
           <tr>
-            {tableRows.map((rows, index) => {
-              return <th key={index}>{rows}</th>;
-            })
+            {
+              tableRows.map((rows, index) => {
+                return <th key={index}>{rows}</th>;
+              })
             }
             {values.length > 0 && <th key="lock">Lock Player</th>}
             {values.length > 0 && <th key="remove">Remove Player</th>}
@@ -441,7 +454,12 @@ function PlayerList({ setParsedData, tableRows, setTableRows, values, setValues,
             return (
               <tr key={index}>
                 {value.map((val, i) => {
-                  return <td key={i}>{val}</td>;
+                  if(i === 5){
+                    //fppg override
+                    return <td key={i}><input type="number" defaultValue={val} min="0" max="100" onChange={(event) => changeFppg(event, value[0])}></input></td>
+                  }else{
+                    return <td key={i}>{val}</td>;
+                  }
                 })}
                 <td key="lock"><input type="checkbox" onChange={(event) => lockPlayer(event, value[0])} ></input></td>
                 <td key="remove"><input type="checkbox" onChange={(event) => removePlayer(event, value[0])} ></input></td>
@@ -472,6 +490,8 @@ function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, set
     <input type="number"
       id="numLineups"
       name="numLineups"
+      min="1"
+      max="250"
       defaultValue={numLineups}
       onChange={(event) => setNumLineups(event.target.value)} />
     <br />
@@ -505,7 +525,7 @@ function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, set
                 })
               }
               {<td key="salary">{value.lineup.reduce((prev, cur) => prev + parseInt(cur[7]), 0)}</td>}
-              {<td key="score">{value.score}</td>}
+              {<td key="score">{Math.round(value.score*100)/100}</td>}
             </tr>
           )
         })}
@@ -531,7 +551,9 @@ function App() {
   const [removedPlayers, setRemovedPlayers] = useState([]);
 
   return <div className="main">
-    <PlayerList setParsedData={setParsedData}
+    <PlayerList 
+      parsedData={parsedData}
+      setParsedData={setParsedData}
       tableRows={tableRows}
       setTableRows={setTableRows}
       values={values}
