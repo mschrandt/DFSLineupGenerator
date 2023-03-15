@@ -6,6 +6,19 @@ import { Circles} from 'react-loader-spinner';
 const async = require("async");
 const RATE_LIMIT = 20;
 const FPPG_COL = 5;
+const PROXY_URL = "https://corsproxy.io/?";
+const ROTOWIRE_URL = "https://www.rotowire.com/daily/tables/optimizer-nba.php?siteID=2&slateID=13281&projSource=RotoWire";
+var rotowireData = {};
+fetch(PROXY_URL+ROTOWIRE_URL
+).then(res=> {
+    return res.json();
+  }).then(res=> {
+    res.forEach(element => {
+      rotowireData[element.lineup_export_id] = element
+    });
+
+    console.debug(rotowireData);
+  })
 
 function playerFilter(excludeList = []) {
   return (player) => player.FPPG !== '' 
@@ -366,6 +379,13 @@ function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values
         const rowsArray = [];
         const valuesArray = [];
 
+        results.data.forEach(element => {
+          var playerId = element.Id.split("-")[1];
+          if(rotowireData[playerId]){
+            element.FPPG = rotowireData[playerId].proj_points;
+          }
+        });
+
         results.data.sort((a,b) => b.FPPG - a.FPPG)
 
         // Iterating data to get column name and their values
@@ -535,6 +555,8 @@ function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, set
 }
 
 function App() {
+
+
   // State to store parsed data
   const [parsedData, setParsedData] = useState([]);
 
