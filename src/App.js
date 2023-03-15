@@ -9,6 +9,14 @@ const FPPG_COL = 5;
 const PROXY_URL = "https://corsproxy.io/?";
 const ROTOWIRE_URL = "https://www.rotowire.com/daily/tables/optimizer-nba.php?siteID=2&slateID=13281&projSource=RotoWire";
 var rotowireData = {};
+const positionOrder = {
+  "PG" : 1,
+  "SG" : 2,
+  "SF" : 3,
+  "PF" : 4,
+  "C" : 5
+}
+
 fetch(PROXY_URL+ROTOWIRE_URL
 ).then(res=> {
     return res.json();
@@ -333,7 +341,7 @@ function combinations(lineup) {
 
 function formatSolution(lineup) {
   return lineup.sort((a, b) => {
-    const positionDiff = a[a.length - 1].localeCompare(b[b.length - 1])
+    const positionDiff = positionOrder[a[a.length - 1]]-positionOrder[b[b.length - 1]]
     if (positionDiff === 0) {
       return a[0].localeCompare(b[0])
     }
@@ -502,7 +510,7 @@ function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, set
     generateSolutions(numLineups, lockedPlayers, removedPlayers, parsedData, values, setLpRes, setLoading);
   }
 
-  const header = ["Row", "C", "PF", "PF", "PG", "PG", "SF", "SF", "SG", "SG", "Salary","Score"]
+  const header = ["Row", "PG", "PG", "SG", "SG","SF", "SF","PF", "PF", "C", "Salary","Score"]
 
   return <div className="lineups">
     <h2>Generate Lineups</h2>
