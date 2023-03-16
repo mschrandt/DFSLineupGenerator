@@ -9,7 +9,7 @@ const async = require("async");
 const RATE_LIMIT = 20;
 const FPPG_COL = 5;
 const PROXY_URL = "https://corsproxy.io/?";
-const ROTOWIRE_URL = "https://www.rotowire.com/daily/tables/optimizer-nba.php?siteID=2&slateID=13281&projSource=RotoWire";
+const ROTOWIRE_URL = "https://www.rotowire.com/daily/tables/optimizer-nba.php?siteID=2&slateID=13305&projSource=RotoWire";
 const rotowireData = {};
 const positionOrder = {
   "PG" : 1,
