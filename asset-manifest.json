@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/DFSLineupGenerator/static/css/main.fcd54c55.css",
-    "main.js": "/DFSLineupGenerator/static/js/main.d619dbeb.js",
+    "main.js": "/DFSLineupGenerator/static/js/main.16bc89be.js",
     "static/js/496.51e728b8.chunk.js": "/DFSLineupGenerator/static/js/496.51e728b8.chunk.js",
     "index.html": "/DFSLineupGenerator/index.html",
     "main.fcd54c55.css.map": "/DFSLineupGenerator/static/css/main.fcd54c55.css.map",
-    "main.d619dbeb.js.map": "/DFSLineupGenerator/static/js/main.d619dbeb.js.map",
+    "main.16bc89be.js.map": "/DFSLineupGenerator/static/js/main.16bc89be.js.map",
     "496.51e728b8.chunk.js.map": "/DFSLineupGenerator/static/js/496.51e728b8.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.fcd54c55.css",
-    "static/js/main.d619dbeb.js"
+    "static/js/main.16bc89be.js"
   ]
 }
