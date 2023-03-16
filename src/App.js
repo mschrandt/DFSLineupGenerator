@@ -263,7 +263,50 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
     setLoading(false);
   }
 
+  // Generate lineups one at a time
+  var lastLineup = bestLineup;
+  for(var i = 0; i < numLineups*2; i++){
+    const nextExcludeLists = combinations(lastLineup, minUniqueness)
+    .filter((excludeList) => {
+      for(var lockedPlayer of lockedPlayers){
+        if(excludeList.includes(lockedPlayer)) return false;
+      }
+      return true;
+    });
+    const nextExcludeList = nextExcludeLists[Math.round(Math.random()*nextExcludeLists.length)];
+    filteredPlayers = playerData.filter(playerFilter(removedPlayers.concat(nextExcludeList)));
+    expandedPalyers = expandPlayerByPos(filteredPlayers);
+    await solve(glpk,
+      buildPlayerIds(expandedPalyers),
+      buildPointVars(expandedPalyers),
+      buildCostVars(expandedPalyers),
+      buildPositionVars(expandedPalyers, "C"),
+      buildPositionVars(expandedPalyers, "SF"),
+      buildPositionVars(expandedPalyers, "SG"),
+      buildPositionVars(expandedPalyers, "PF"),
+      buildPositionVars(expandedPalyers, "PG"),
+      buildTotalPlayers(expandedPalyers),
+      lockedPlayers,
+      filteredPlayers).then((res) => {
+        if (res.result.status === glpk.GLP_OPT) {
+          solutions.push(
+            {
+              score: res.result.z,
+              lineup: formatSolution(Object.entries(res.result.vars).filter(res => res[1] === 1)
+                .map(res => playerArray.find(element => element[0] === res[0].split('_')[0]).concat(res[0].split('_')[1])))
+            })
+        }
+        lastLineup = Object.entries(res.result.vars).filter(res => res[1] === 1)
+      .map(res => res[0].split('_')[0])
+       })
+  }
+  var uniqueSolutions = unique(solutions).slice(0,numLineups);
+  uniqueSolutions.sort((a,b)=>b.score-a.score);
+  setLpRes(uniqueSolutions);
+  setLoading(false); 
+
   //generate combinations
+  /*
   const excludeLists = shuffleArray(combinations(bestLineup, minUniqueness)
     .filter((excludeList) => {
       for(var lockedPlayer of lockedPlayers){
@@ -305,7 +348,7 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
     setLpRes(uniqueSolutions);
     setLoading(false); 
   })
-  queue.push(excludeLists);
+  queue.push(excludeLists); */
 }
 
 function combinations(lineup, minUniqueness = 1) {
@@ -359,6 +402,42 @@ function combinations(lineup, minUniqueness = 1) {
     )
   }
 
+  if(minUniqueness <= 6)
+  {    
+    combinationList = combinationList.concat(
+      lineup.flatMap(
+        (v, i) => lineup.slice(i + 1).flatMap((w, j) =>
+          lineup.slice(i + j + 2).flatMap((x, k) =>
+            lineup.slice(i + j + k + 3).flatMap((y, l) => 
+              lineup.slice(i+j+k+l+4).flatMap((z,m) => 
+                lineup.slice(i+j+k+l+m+5).map(a => [v, w, x, y, z, a])
+                )
+              )
+          )
+        )
+      )
+    )
+  }
+
+  if(minUniqueness <= 7)
+  {    
+    combinationList = combinationList.concat(
+      lineup.flatMap(
+        (v, i) => lineup.slice(i + 1).flatMap((w, j) =>
+          lineup.slice(i + j + 2).flatMap((x, k) =>
+            lineup.slice(i + j + k + 3).flatMap((y, l) => 
+              lineup.slice(i+j+k+l+4).flatMap((z,m) => 
+                lineup.slice(i+j+k+l+m+5).flatMap( (a,n) => 
+                  lineup.slice(i+j+k+l+m+n+6).map(b=> [v, w, x, y, z, a, b])
+                  )
+                )
+              )
+          )
+        )
+      )
+    )
+  }
+
   return combinationList;
 }
 
@@ -382,9 +461,21 @@ function formatSolution(lineup) {
 }
 
 function unique(array){
+  const uniqueDict = {}
+  const uniqueSolutions = []
+  for(var sln of array){
+    const hash = sln.lineup.map(player => player[0]).sort((a,b)=>a.localeCompare(b)).join(",")
+    if(!uniqueDict[hash]){
+      uniqueDict[hash] = true;
+      uniqueSolutions.push(sln);
+    }
+  }
+  return uniqueSolutions;
+  /*
   var stringArray = array.map(JSON.stringify);
   var uniqueStringArray = new Set(stringArray);
   return Array.from(uniqueStringArray, JSON.parse);
+  */
 
 }
 
@@ -563,7 +654,7 @@ function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, set
     <label>Minimum unique players per lineup: {minUniqueness}</label>
     <input type="range" 
       min="1" 
-      max="5" 
+      max="7" 
       value={minUniqueness} 
       onChange={(event) => setMinUniqueness(event.target.value)}
       />
