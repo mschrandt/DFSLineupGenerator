@@ -1,5 +1,5 @@
 import './App.css';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Papa from "papaparse";
 import GLPK from 'glpk.js';
 import { Circles} from 'react-loader-spinner';
@@ -9,7 +9,8 @@ const async = require("async");
 const RATE_LIMIT = 20;
 const FPPG_COL = 5;
 const PROXY_URL = "https://corsproxy.io/?";
-const ROTOWIRE_URL = "https://www.rotowire.com/daily/tables/optimizer-nba.php?siteID=2&slateID=13305&projSource=RotoWire";
+const ROTOWIRE_OPTIMIZER_URL = "https://www.rotowire.com/daily/nba/optimizer.php?site=FanDuel"
+const ROTOWIRE_URL = "https://www.rotowire.com/daily/tables/optimizer-nba.php?siteID=2&projSource=RotoWire";
 const rotowireData = {};
 const positionOrder = {
   "PG" : 1,
@@ -18,17 +19,6 @@ const positionOrder = {
   "PF" : 4,
   "C" : 5
 }
-
-fetch(PROXY_URL+ROTOWIRE_URL
-).then(res=> {
-    return res.json();
-  }).then(res=> {
-    res.forEach(element => {
-      rotowireData[element.lineup_export_id] = element
-    });
-
-    console.debug(rotowireData);
-  })
 
 function playerFilter(excludeList = []) {
   return (player) => player.FPPG !== '' 
@@ -500,6 +490,44 @@ function exportData(solutions){
 }
 
 function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values, setValues, lockedPlayers, setLockedPlayers, removedPlayers, setRemovedPlayers }) {
+  const [rotowireDataLoaded, setRotowireDataLoaded] = useState(false);
+
+  useEffect(()=> {
+    getSlateId().then(res =>
+      {
+        if(!res){
+          return;
+        }
+
+        fetch(PROXY_URL + ROTOWIRE_URL + "&slateID=" + res
+        ).then(res=> {
+            return res.json();
+          }).then(res=> {
+            res.forEach(element => {
+              rotowireData[element.lineup_export_id] = element
+            });
+            setRotowireDataLoaded(true);
+          })
+      })
+    },[]) 
+
+    
+  async function getSlateId(){
+    const slateIdRegex = /data-slateid="[0-9]*"/;
+
+    return fetch(PROXY_URL+ROTOWIRE_OPTIMIZER_URL)
+      .then(res=> {
+        return res.text();
+      }).then(res => {
+        const slateIdArray = res.match(slateIdRegex);
+        if(slateIdArray){
+          return slateIdArray[0].split('"')[1];
+        }
+        return false;
+      });
+  }
+    
+
 
   const changeHandler = (event) => {
     // Passing file data (event.target.files[0]) to parse using Papa.parse
@@ -516,7 +544,7 @@ function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values
             element.FPPG = rotowireData[playerId].proj_points;
           }else if(element['Injury Indicator'] === 'O'){
             element.FPPG = 0;
-          }else {
+          }else if(rotowireDataLoaded) {
             element.FPPG = 0;
           }
         });
@@ -582,6 +610,13 @@ function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values
     <div className='playerList'>
       <h2>Upload Fanduel Player List (.csv)</h2>
       {/* File Uploader */}
+      <label hidden={!rotowireDataLoaded}>
+        RotoWire data loaded
+      </label>
+      <label hidden={rotowireDataLoaded}>
+        RotoWire data failed to load
+      </label>
+      <br/>
       <input
         type="file"
         name="file"
@@ -700,7 +735,6 @@ function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, set
 }
 
 function App() {
-
 
   // State to store parsed data
   const [parsedData, setParsedData] = useState([]);
