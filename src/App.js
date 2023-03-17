@@ -540,13 +540,23 @@ function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values
 
         results.data.forEach(element => {
           var playerId = element.Id.split("-")[1];
-          if(rotowireData[playerId]){
-            element.FPPG = rotowireData[playerId].proj_points;
+          if(rotowireDataLoaded){
+            element.FPPG = 0;
+            element['Lineup Status'] = 'No'
+            element['Expected Minutes'] = 0
+
+            if(rotowireData[playerId]){
+              element.FPPG = rotowireData[playerId].proj_points;
+              element['Lineup Status'] = rotowireData[playerId].lineup_status
+              element['Expected Minutes'] = rotowireData[playerId].minutes
+            }
           }else if(element['Injury Indicator'] === 'O'){
             element.FPPG = 0;
-          }else if(rotowireDataLoaded) {
-            element.FPPG = 0;
           }
+
+          delete element['Tier']
+          delete element['_1']
+          delete element['Roster Position']
         });
 
         results.data.sort((a,b) => b.FPPG - a.FPPG)
@@ -597,11 +607,11 @@ function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values
 
   const changeFppg = (event, playerId) => {
     const indexToUpdate = values.findIndex((player) => player[0]===playerId);
-    if(event.target.value >= event.target.min &&
-        event.target.value <= event.target.max){
-          values[indexToUpdate][FPPG_COL] = event.target.value;
+    if(parseInt(event.target.value) >= parseInt(event.target.min) &&
+        parseInt(event.target.value) <= parseInt(event.target.max)){
+          values[indexToUpdate][FPPG_COL] = parseInt(event.target.value);
           setValues(values);
-          parsedData[indexToUpdate].FPPG = event.target.value;
+          parsedData[indexToUpdate].FPPG = parseInt(event.target.value);
           setParsedData(parsedData);
         }
   }
