@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/DFSLineupGenerator/static/css/main.fcd54c55.css",
-    "main.js": "/DFSLineupGenerator/static/js/main.bcc9cb2c.js",
+    "main.css": "/DFSLineupGenerator/static/css/main.27ebae9d.css",
+    "main.js": "/DFSLineupGenerator/static/js/main.cc293835.js",
     "static/js/496.51e728b8.chunk.js": "/DFSLineupGenerator/static/js/496.51e728b8.chunk.js",
     "index.html": "/DFSLineupGenerator/index.html",
-    "main.fcd54c55.css.map": "/DFSLineupGenerator/static/css/main.fcd54c55.css.map",
-    "main.bcc9cb2c.js.map": "/DFSLineupGenerator/static/js/main.bcc9cb2c.js.map",
+    "main.27ebae9d.css.map": "/DFSLineupGenerator/static/css/main.27ebae9d.css.map",
+    "main.cc293835.js.map": "/DFSLineupGenerator/static/js/main.cc293835.js.map",
     "496.51e728b8.chunk.js.map": "/DFSLineupGenerator/static/js/496.51e728b8.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.fcd54c55.css",
-    "static/js/main.bcc9cb2c.js"
+    "static/css/main.27ebae9d.css",
+    "static/js/main.cc293835.js"
   ]
 }
