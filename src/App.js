@@ -20,10 +20,12 @@ const positionOrder = {
   "C" : 5
 }
 
-function playerFilter(excludeList = []) {
+function playerFilter(excludeList = [], onlyUseExpectedPlayers = false) {
   return (player) => player.FPPG !== '' 
   && !excludeList.includes(player.Id) 
-  && player['Injury Indicator'] != 'O';
+  && player['Injury Indicator'] != 'O'
+  && (!onlyUseExpectedPlayers 
+    || (onlyUseExpectedPlayers && player['Lineup Status'] !== "No"));
 }
 
 function expandPlayerByPos(playerData) {
@@ -221,10 +223,10 @@ function solve(glpk,
   return glpk.solve(equation, options);
 }
 
-async function generateSolutions(numLineups, lockedPlayers, removedPlayers, playerData, playerArray, setLpRes, setLoading, minUniqueness) {
+async function generateSolutions(numLineups, lockedPlayers, removedPlayers, playerData, playerArray, setLpRes, setLoading, minUniqueness, onlyUseExpectedPlayers) {
   const glpk = await GLPK();
   const solutions = []
-  var filteredPlayers = playerData.filter(playerFilter(removedPlayers));
+  var filteredPlayers = playerData.filter(playerFilter(removedPlayers, onlyUseExpectedPlayers));
   var expandedPalyers = expandPlayerByPos(filteredPlayers);
   var res = await solve(glpk,
     buildPlayerIds(expandedPalyers),
@@ -264,7 +266,7 @@ async function generateSolutions(numLineups, lockedPlayers, removedPlayers, play
       return true;
     });
     const nextExcludeList = nextExcludeLists[Math.round(Math.random()*nextExcludeLists.length)];
-    filteredPlayers = playerData.filter(playerFilter(removedPlayers.concat(nextExcludeList)));
+    filteredPlayers = playerData.filter(playerFilter(removedPlayers.concat(nextExcludeList),onlyUseExpectedPlayers));
     expandedPalyers = expandPlayerByPos(filteredPlayers);
     await solve(glpk,
       buildPlayerIds(expandedPalyers),
@@ -489,8 +491,8 @@ function exportData(solutions){
   link.click();
 }
 
-function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values, setValues, lockedPlayers, setLockedPlayers, removedPlayers, setRemovedPlayers }) {
-  const [rotowireDataLoaded, setRotowireDataLoaded] = useState(false);
+function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values, setValues, lockedPlayers, setLockedPlayers, removedPlayers, setRemovedPlayers, rotowireDataLoaded, setRotowireDataLoaded}) {
+
 
   useEffect(()=> {
     getSlateId().then(res =>
@@ -672,15 +674,16 @@ function PlayerList({ parsedData, setParsedData, tableRows, setTableRows, values
   );
 }
 
-function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, setLpRes }) {
+function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, setLpRes, rotowireDataLoaded }) {
 
   const [numLineups, setNumLineups] = useState(10);
   const [loading, setLoading] = useState(false);
   const [minUniqueness, setMinUniqueness] = useState(1);
+  const [onlyUseExpectedPlayers, setOnlyUseExpectedPlayers] = useState(false);
   const generateLineupsButtonEvent = () => {
     setLpRes([])
     setLoading(true)
-    generateSolutions(numLineups, lockedPlayers, removedPlayers, parsedData, values, setLpRes, setLoading, minUniqueness);
+    generateSolutions(numLineups, lockedPlayers, removedPlayers, parsedData, values, setLpRes, setLoading, minUniqueness, onlyUseExpectedPlayers);
   }
 
   const header = ["Row", "PG", "PG", "SG", "SG","SF", "SF","PF", "PF", "C", "Salary","Score"]
@@ -694,14 +697,23 @@ function Lineups({ lockedPlayers, removedPlayers, parsedData, values, lpRes, set
       min="1"
       max="250"
       defaultValue={numLineups}
-      onChange={(event) => setNumLineups(event.target.value)} />
+      onChange={(event) => setNumLineups(parseInt(event.target.value))} />
     <br />
+    <div hidden={!rotowireDataLoaded}>
+      <label> Only include expected players? </label>
+      <label className="switch">
+        <input type="checkbox"
+          defaultValue={onlyUseExpectedPlayers}
+          onChange={(event) => setOnlyUseExpectedPlayers(event.target.checked)}/>
+        <span class="slider round"></span>
+      </label>
+    </div>
     <label>Minimum unique players per lineup: {minUniqueness}</label>
     <input type="range" 
       min="1" 
       max="7" 
       value={minUniqueness} 
-      onChange={(event) => setMinUniqueness(event.target.value)}
+      onChange={(event) => setMinUniqueness(parseInt(event.target.value))}
       />
     
     <br />
@@ -760,6 +772,7 @@ function App() {
 
   const [lockedPlayers, setLockedPlayers] = useState([]);
   const [removedPlayers, setRemovedPlayers] = useState([]);
+  const [rotowireDataLoaded, setRotowireDataLoaded] = useState(false);
 
   return <div className="main">
     <PlayerList 
@@ -772,14 +785,17 @@ function App() {
       lockedPlayers={lockedPlayers}
       setLockedPlayers={setLockedPlayers}
       removedPlayers={removedPlayers}
-      setRemovedPlayers={setRemovedPlayers} />
+      setRemovedPlayers={setRemovedPlayers} 
+      rotowireDataLoaded={rotowireDataLoaded}
+      setRotowireDataLoaded={setRotowireDataLoaded}/>
 
     <Lineups lockedPlayers={lockedPlayers}
       removedPlayers={removedPlayers}
       parsedData={parsedData}
       values={values}
       lpRes={lpRes}
-      setLpRes={setLpRes} />
+      setLpRes={setLpRes}
+      rotowireDataLoaded={rotowireDataLoaded} />
   </div>
 }
 

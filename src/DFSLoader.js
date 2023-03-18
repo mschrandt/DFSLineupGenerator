@@ -1,0 +1,12 @@
+class DFSLoader {
+    extractRotowireData() {
+
+    }
+
+    glpkLinearEquation() {
+
+    }
+
+    
+
+}
